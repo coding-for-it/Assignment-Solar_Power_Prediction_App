@@ -12,11 +12,19 @@ The project:
 
 > **Docker is not required.** This project runs directly with Python.
 
-## Model check
+## Screenshots
 
-Actual vs. predicted solar output on the 10 validation days.
+**Final visualization – historical data + 48-hour forecast**
 
-Both validation images are created when you run the notebook. An interactive version is saved as `outputs/solar_forecast_interactive.html`.
+![Historical and forecast chart](outputs/solar_forecast_chart.png)
+
+**Model check – actual vs predicted on the 10 validation days**
+
+![Validation chart](outputs/validation_actual_vs_predicted.png)
+
+Both images are created when you run the notebook. An interactive version is saved as `outputs/solar_forecast_interactive.html`.
+
+---
 
 ## What the project does
 
@@ -106,8 +114,6 @@ If PowerShell blocks activation, use Command Prompt or follow your system's Powe
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
-
-The requirements file should include the project libraries and API server packages, including `fastapi` and `uvicorn[standard]`.
 
 ### 4. Train the model
 
@@ -218,15 +224,40 @@ Best parameters for LightGBM: `n_estimators=200`, `num_leaves=15`.
 
 All three models perform very similarly. Random Forest has the lowest MAE, but LightGBM was selected because it had the lowest cross-validation RMSE on the training days. This selection rule was set before looking at validation scores. Results can vary slightly with library versions.
 
-**Units:** `solar_output` is in arbitrary units on a kW scale (as defined in the assignment), so MAE and RMSE are in the same units.
+**Units:** `solar_output` is in arbitrary units on a ~kW scale (as defined in the assignment), so MAE and RMSE are in the same units.
 
 ## Sample output
 
 ### A. Live forecast — next 24 hours
 
-Source: `outputs/sample_24h_predictions.csv`.
+Live Open-Meteo forecast for Pune, generated on 19 Nov 2026 (source: `outputs/sample_24h_predictions.csv`). Values are in the dataset's arbitrary units (~kW scale). A new run produces a new table, because it depends on the forecast on the day you run the project.
 
-Run the notebook, open `outputs/sample_24h_predictions.csv`, and use its 24-hour table (`timestamp` + `predicted_solar_output`). The values are not pre-filled here because they depend on the weather forecast on the day you run the project.
+| Date and time | Predicted output |
+|---|---:|
+| 19 Nov 2026 16:00 | 521.73 |
+| 19 Nov 2026 17:00 | 226.94 |
+| 19 Nov 2026 18:00 | 21.44 |
+| 19 Nov 2026 19:00 | 19.39 |
+| 19 Nov 2026 20:00 | 11.60 |
+| 19 Nov 2026 21:00 | 17.01 |
+| 19 Nov 2026 22:00 | 12.82 |
+| 19 Nov 2026 23:00 | 9.87 |
+| 20 Nov 2026 00:00 | 4.39 |
+| 20 Nov 2026 01:00 | 13.36 |
+| 20 Nov 2026 02:00 | 16.38 |
+| 20 Nov 2026 03:00 | 9.41 |
+| 20 Nov 2026 04:00 | 9.51 |
+| 20 Nov 2026 05:00 | 10.58 |
+| 20 Nov 2026 06:00 | 9.64 |
+| 20 Nov 2026 07:00 | 102.20 |
+| 20 Nov 2026 08:00 | 413.94 |
+| 20 Nov 2026 09:00 | 578.03 |
+| 20 Nov 2026 10:00 | 669.31 |
+| 20 Nov 2026 11:00 | 678.94 |
+| 20 Nov 2026 12:00 | 675.41 |
+| 20 Nov 2026 13:00 | 675.06 |
+| 20 Nov 2026 14:00 | 608.11 |
+| 20 Nov 2026 15:00 | 587.61 |
 
 ### B. Validation sample — last 24 hours of the dataset
 
@@ -305,7 +336,7 @@ The response has this shape (values depend on the live forecast):
   "location": "Pune, Maharashtra, India (18.52, 73.86)",
   "source": "live",
   "hours": 3,
-  "unit_note": "solar_output is in arbitrary units on a kW scale (as defined in the assignment)",
+  "unit_note": "solar_output is in arbitrary units on a ~kW scale (as defined in the assignment)",
   "predictions": [
     {
       "timestamp": "2026-11-20T10:00",
