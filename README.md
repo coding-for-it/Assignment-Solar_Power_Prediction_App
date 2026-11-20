@@ -1,222 +1,47 @@
 # Solar Power Prediction Application
 
-An end-to-end machine-learning project that predicts hourly solar power output for Pune, Maharashtra (18.52° N, 73.86° E).
+An end-to-end machine-learning pipeline that predicts hourly solar power output for **Pune, Maharashtra (18.52° N, 73.86° E)**. It cleans the provided 60-day dataset, engineers time features, trains and evaluates regression models, fetches a live 48-hour weather forecast, and visualizes historical data together with the predicted output.
 
-The project:
-- Cleans a 60-day hourly dataset.
-- Engineers time-based features.
-- Compares three regression models.
-- Fetches a live 48-hour weather forecast.
-- Predicts future solar output.
-- Serves results through a Jupyter notebook, a Streamlit web app, and a FastAPI REST API.
+## Final visualization
 
-> **Docker is not required.** This project runs directly with Python.
+![Historical data and 48-hour forecast](outputs/solar_forecast_chart.png)
 
-## Screenshots
+*Last 7 days of historical `solar_output` followed by the 48-hour forecast. Historical dates are shifted for display only (see design decisions).* An interactive Plotly version is saved as `outputs/solar_forecast_interactive.html`.
 
-**Final visualization – historical data + 48-hour forecast**
+## Setup
 
-![Historical and forecast chart](outputs/solar_forecast_chart.png)
-
-**Model check – actual vs predicted on the 10 validation days**
-
-![Validation chart](outputs/validation_actual_vs_predicted.png)
-
-Both images are created when you run the notebook. An interactive version is saved as `outputs/solar_forecast_interactive.html`.
-
----
-
-## What the project does
-
-| Step | Description |
-|---|---|
-| 1. Data | Generates the assignment dataset with the exact script from the brief (seed 42): 1,440 hourly rows, from 1 January to 29 February 2024. |
-| 2. Cleaning | Parses timestamps, sorts the data, removes duplicate hours, rebuilds a complete hourly timeline, interpolates gaps, and clips values to valid ranges. |
-| 3. Features | Creates hour, sine/cosine of hour, day of week, and weekend flag features. |
-| 4. Split | Uses a chronological split: first 50 days for training and last 10 days for validation (no shuffling). |
-| 5. Training | Trains Random Forest, XGBoost, and LightGBM, each tuned with `GridSearchCV` and `TimeSeriesSplit`. |
-| 6. Evaluation | Calculates MAE, RMSE, and R² on the 10 validation days; saves the selected model with `joblib`. |
-| 7. Live API | Retrieves a 48-hour hourly forecast for Pune from Open-Meteo and formats it to match the model's feature schema. |
-| 8. Prediction | Applies the same feature function to the forecast and clips predictions at 0. |
-| 9. Output | Produces static and interactive charts, a 24-hour table, a web app, and a REST API. |
-
-## Project structure
-
-```text
-solar-power-prediction/
-├── Solar_Power_Prediction.ipynb   # Step-by-step walkthrough of the workflow
-├── solar_core.py                  # Shared data, feature, weather API, and prediction code
-├── train.py                       # Training script (tune, evaluate, save model)
-├── api.py                         # FastAPI REST API
-├── app.py                         # Streamlit web app
-├── tests/                         # Unit tests (pytest)
-│   ├── conftest.py
-│   ├── test_solar_core.py
-│   └── test_api.py
-├── requirements.txt               # Python dependencies
-├── .gitignore
-├── README.md
-│
-│   Created when you run the notebook or train.py:
-├── solar_weather_dataset.csv      # Generated 60-day dataset
-├── last_forecast.csv              # Last good API response (fallback if API is down)
-├── models/
-│   └── solar_model.joblib         # Model, feature list, and training medians
-└── outputs/
-    ├── model_metrics.json
-    ├── solar_forecast_chart.png
-    ├── validation_actual_vs_predicted.png
-    ├── solar_forecast_interactive.html
-    ├── solar_predictions.csv
-    └── sample_24h_predictions.csv
-```
-
-The notebook is the readable walkthrough (data → model → forecast → charts). `solar_core.py` contains reusable functions, so `train.py`, `api.py`, and `app.py` use the same data, feature, and weather-API logic. `train.py` reproduces the notebook's model and metrics from the command line.
-
-## Setup and run (without Docker)
-
-### Requirements
-
-- Python 3.10 or newer
-- `pip`
-- An internet connection for installing packages and retrieving the live weather forecast
-
-No Docker installation, Dockerfile, or container is needed.
-
-### 1. Open the project folder
-
-Open a terminal (Command Prompt, PowerShell, or a terminal on macOS/Linux) and change to the directory containing `requirements.txt`.
-
-### 2. Create and activate a virtual environment
-
-**Windows — Command Prompt**
-
-```bat
-python -m venv venv
-venv\Scripts\activate
-```
-
-**Windows — PowerShell**
-
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-```
-
-**macOS / Linux**
+Requires Python 3.10+.
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+pip install -r requirements.txt     # install dependencies
+python train.py                     # generate data, train, evaluate, save models/solar_model.joblib
 ```
 
-If PowerShell blocks activation, use Command Prompt or follow your system's PowerShell execution-policy guidance.
-
-### 3. Install dependencies
+Then run the notebook (full walkthrough with charts and tables) or the apps:
 
 ```bash
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+jupyter notebook                    # open Solar_Power_Prediction.ipynb and Run All Cells
+streamlit run app.py                # web app      -> http://localhost:8501
+uvicorn api:app --reload            # REST API     -> http://127.0.0.1:8000/docs
+python -m pytest                    # unit tests
 ```
 
-### 4. Train the model
-
-```bash
-python train.py
-```
-
-This runs the training workflow, compares the models, evaluates them, and saves the selected model under `models/`.
-
-Alternatively, open `Solar_Power_Prediction.ipynb` in Jupyter and choose **Run → Run All Cells**. The notebook also creates the charts and tables in `outputs/`. An internet connection is needed for the weather-API step.
-
-### 5. Start the Streamlit web app
-
-```bash
-streamlit run app.py
-```
-
-Open [http://localhost:8501](http://localhost:8501) in your browser.
-
-### 6. Start the FastAPI backend (optional)
-
-Open a second terminal, change to the project folder, and activate the same virtual environment. Then run:
-
-```bash
-uvicorn api:app --reload
-```
-
-Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for the interactive Swagger documentation.
-
-The Streamlit app and FastAPI server are separate processes. Keep each terminal open while using the corresponding service. You can run the web app, the API, or both.
-
-## Quick start commands
-
-After activating the virtual environment and installing dependencies:
-
-```bash
-# Train and save the model
-python train.py
-
-# Streamlit frontend
-streamlit run app.py
-
-# FastAPI backend (optional; run in a second terminal)
-uvicorn api:app --reload
-```
-
-## API key
-
-No API key is needed. The project uses Open-Meteo, which is free for non-commercial use and requires no sign-up.
-
-If you switch to a keyed weather API (for example, OpenWeatherMap or WeatherAPI), store the key in a `.env` file, keep `.env` in `.gitignore`, and never commit it.
+**API key:** none required. See the next section.
 
 ## Weather API
 
-| Item | Details |
-|---|---|
-| API | Open-Meteo Forecast API |
-| Endpoint | `https://api.open-meteo.com/v1/forecast` |
-| Access | No sign-up, account, or API key required |
-| Why this API | Free tier, no key to leak, hourly data for 3 days, supports a timezone and m/s wind speed |
-| Fields used | `temperature_2m`, `relative_humidity_2m`, `cloud_cover`, `wind_speed_10m`, `precipitation` |
-| Settings | `timezone=Asia/Kolkata`, `wind_speed_unit=ms`, `forecast_days=3` (only the next 48 hours from the current hour are used) |
+I used the **[Open-Meteo Forecast API](https://open-meteo.com/)** (`https://api.open-meteo.com/v1/forecast`). It is free for non-commercial use and needs **no sign-up and no API key**, so there is nothing to configure and no secret to commit. (If a keyed API is used instead, put the key in a `.env` file, which is already in `.gitignore`.)
 
-## Error handling
+- **Fields used:** `temperature_2m`, `relative_humidity_2m`, `cloud_cover`, `wind_speed_10m`, `precipitation`
+- **Settings:** hourly data, `timezone=Asia/Kolkata`, `wind_speed_unit=ms`; the next 48 hours from the current hour are kept
+- **API errors / rate limits:** up to 3 attempts with increasing wait; HTTP 429 is handled by waiting (using `Retry-After` when sent) and retrying
+- **Missing fields:** single missing hours are interpolated; a field missing entirely is filled with its training-data median
+- **API downtime:** the last successful forecast is saved to `last_forecast.csv` and used as a fallback (the app and API report the source as "saved"); if nothing is saved, a clear error is returned (HTTP 503 from the REST API)
+- **Caching:** live forecasts are cached for 10 minutes to limit API calls
 
-| Problem | What the code does |
-|---|---|
-| Network error, timeout, or bad response | Retries up to 3 times with increasing wait. |
-| Rate limit (HTTP 429) | Waits (uses `Retry-After` when present) and retries. |
-| A few missing hourly values | Uses linear interpolation between neighbouring hours. |
-| A whole field missing from the response | Fills it with the median of the training data. |
-| Out-of-range values | Clips humidity and cloud cover to 0–100. |
-| API completely down | Uses the last saved forecast (`last_forecast.csv`); the app and API identify the data as saved. |
-| API down and nothing saved | Returns a clear error message (HTTP 503 from the REST API). |
-| Too many requests | Caches live forecasts for 10 minutes in the app and API. |
+## Model performance (validation set)
 
-## Feature engineering
-
-| Feature | Why it is used |
-|---|---|
-| `temperature`, `humidity`, `cloud_cover`, `wind_speed`, `precipitation` | Weather inputs available both historically and in the forecast. |
-| `hour` (0–23) | Solar output depends strongly on time of day. |
-| `hour_sin`, `hour_cos` | Represents hours on a circle, so 23:00 and 00:00 are treated as neighbours. |
-| `day_of_week`, `is_weekend` | Calendar features requested in the brief. |
-
-A single function, `add_time_features()`, builds these features for both historical data and the API forecast, so the two always have the same columns and order.
-
-## Model training and evaluation
-
-### Split (chronological, no shuffling)
-
-| Set | Rows | Period |
-|---|---:|---|
-| Training | 1,200 (50 days) | 1 Jan 2024 – 19 Feb 2024 |
-| Validation | 240 (10 days) | 20 Feb 2024 – 29 Feb 2024 |
-
-Each model is tuned with a small grid using `TimeSeriesSplit` (3 folds) inside the 50 training days only. The validation days are not used during tuning. The model with the lowest cross-validation RMSE is selected.
-
-### Results on the 10 validation days
+The data is split **chronologically**: the first 50 days (1,200 rows, 1 Jan – 19 Feb 2024) are used for training and the last 10 days (240 rows, 20 – 29 Feb 2024) for validation. Hyperparameters are tuned with `GridSearchCV` + `TimeSeriesSplit` **inside the training days only**, and the model with the lowest cross-validation RMSE is selected.
 
 | Model | CV RMSE (train) | MAE | RMSE | R² |
 |---|---:|---:|---:|---:|
@@ -224,19 +49,13 @@ Each model is tuned with a small grid using `TimeSeriesSplit` (3 folds) inside t
 | XGBoost | 23.02 | 15.36 | 20.98 | 0.9842 |
 | Random Forest | 25.84 | 15.07 | 20.71 | 0.9846 |
 
-Best parameters for LightGBM: `n_estimators=200`, `num_leaves=15`.
+**Selected model: LightGBM** (`n_estimators=200`, `num_leaves=15`). `solar_output` is in the assignment's arbitrary units (~kW scale), so MAE and RMSE use the same units. The three models perform very similarly; results may vary slightly with library versions.
 
-All three models perform very similarly. Random Forest has the lowest MAE, but LightGBM was selected because it had the lowest cross-validation RMSE on the training days. This selection rule was set before looking at validation scores. Results can vary slightly with library versions.
+## Sample output: next 24 hours
 
-**Units:** `solar_output` is in arbitrary units on a ~kW scale (as defined in the assignment), so MAE and RMSE are in the same units.
+Live Open-Meteo forecast for Pune, generated on 19 Nov 2026 (`outputs/sample_24h_predictions.csv`).
 
-## Sample output
-
-### A. Live forecast — next 24 hours
-
-Live Open-Meteo forecast for Pune, generated on 19 Nov 2026 (source: `outputs/sample_24h_predictions.csv`). Values are in the dataset's arbitrary units (~kW scale). A new run produces a new table, because it depends on the forecast on the day you run the project.
-
-| Date and time | Predicted output |
+| Date and time | Predicted solar output |
 |---|---:|
 | 19 Nov 2026 16:00 | 521.73 |
 | 19 Nov 2026 17:00 | 226.94 |
@@ -263,160 +82,36 @@ Live Open-Meteo forecast for Pune, generated on 19 Nov 2026 (source: `outputs/sa
 | 20 Nov 2026 14:00 | 608.11 |
 | 20 Nov 2026 15:00 | 587.61 |
 
-### B. Validation sample — last 24 hours of the dataset
-
-Actual vs. predicted values for 29 February 2024:
-
-| Date and time | Actual | Predicted |
-|---|---:|---:|
-| 29 Feb 2024 00:00 | 0.00 | 1.12 |
-| 29 Feb 2024 01:00 | 0.00 | 13.15 |
-| 29 Feb 2024 02:00 | 9.59 | 7.11 |
-| 29 Feb 2024 03:00 | 22.58 | 4.14 |
-| 29 Feb 2024 04:00 | 0.00 | 2.74 |
-| 29 Feb 2024 05:00 | 0.00 | 4.53 |
-| 29 Feb 2024 06:00 | 33.95 | 9.78 |
-| 29 Feb 2024 07:00 | 176.95 | 181.99 |
-| 29 Feb 2024 08:00 | 283.13 | 295.12 |
-| 29 Feb 2024 09:00 | 315.26 | 311.91 |
-| 29 Feb 2024 10:00 | 462.83 | 428.13 |
-| 29 Feb 2024 11:00 | 703.32 | 674.97 |
-| 29 Feb 2024 12:00 | 526.49 | 504.79 |
-| 29 Feb 2024 13:00 | 334.65 | 315.97 |
-| 29 Feb 2024 14:00 | 391.44 | 342.75 |
-| 29 Feb 2024 15:00 | 212.24 | 260.54 |
-| 29 Feb 2024 16:00 | 150.01 | 145.15 |
-| 29 Feb 2024 17:00 | 55.23 | 45.92 |
-| 29 Feb 2024 18:00 | 0.00 | 5.98 |
-| 29 Feb 2024 19:00 | 0.00 | 8.27 |
-| 29 Feb 2024 20:00 | 13.86 | 6.52 |
-| 29 Feb 2024 21:00 | 19.22 | 0.00 |
-| 29 Feb 2024 22:00 | 22.93 | 13.68 |
-| 29 Feb 2024 23:00 | 0.00 | 14.03 |
-
-## Web application
-
-Run:
-
-```bash
-streamlit run app.py
-```
-
-The app provides:
-- Live 48-hour forecast with peak output, 24-hour total, productive hours, average cloud cover, and temperature.
-- Interactive Plotly chart (past 7 days + next 48 hours, or forecast only).
-- Hourly table for the next 24 or 48 hours, including the weather inputs used.
-- CSV download of predictions.
-- Model name and validation MAE, RMSE, and R².
-- Warning banner if the API is down and the last saved forecast is being shown.
-
-## REST API (FastAPI)
-
-Start the API:
-
-```bash
-uvicorn api:app --reload
-```
-
-Then open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for interactive documentation (Swagger UI).
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/health` | Checks whether the server is running and the model is loaded. |
-| GET | `/model` | Returns the selected model, feature list, and validation metrics. |
-| GET | `/forecast?hours=24` | Fetches the Pune weather forecast and predicts solar output for the next 1–48 hours. |
-| POST | `/predict` | Predicts solar output for weather values you send (does not call the weather API). |
-
-### Example — forecast
-
-```bash
-curl "http://127.0.0.1:8000/forecast?hours=3"
-```
-
-The response has this shape (values depend on the live forecast):
-
-```json
-{
-  "location": "Pune, Maharashtra, India (18.52, 73.86)",
-  "source": "live",
-  "hours": 3,
-  "unit_note": "solar_output is in arbitrary units on a ~kW scale (as defined in the assignment)",
-  "predictions": [
-    {
-      "timestamp": "2026-11-20T10:00",
-      "predicted_solar_output": 528.49,
-      "temperature": 29.1,
-      "humidity": 48.0,
-      "cloud_cover": 20.0,
-      "wind_speed": 3.2,
-      "precipitation": 0.0
-    }
-  ]
-}
-```
-
-### Example — custom weather
-
-```bash
-curl -X POST "http://127.0.0.1:8000/predict" \
-  -H "Content-Type: application/json" \
-  -d '[{"timestamp":"2026-11-20T12:00","temperature":30,"humidity":50,"cloud_cover":10,"wind_speed":3,"precipitation":0}]'
-```
-
-Inputs are validated (for example, humidity 0–100 and hours 1–48). Invalid requests return HTTP 422. If the weather API is down, the endpoint falls back to the last saved forecast (`"source": "saved"`). If nothing is saved, it returns HTTP 503.
-
-## Running the tests
-
-The project has **36 automated tests** (pytest). They need no internet: the weather API is replaced by a fake response.
-
-```bash
-python -m pytest -v
-```
-
-Run `python train.py` once first. Tests that use the trained model are skipped automatically if `models/solar_model.joblib` is missing.
-
-| Area | What is checked |
-|---|---|
-| Dataset | Matches the assignment script (1,440 rows, correct dates, no negative output) and is reproducible |
-| Cleaning | Missing hours, missing values, duplicates and outliers are fixed |
-| Features | hour, sin/cos (including the 23:00 → 00:00 wrap-around), day of week, weekend flag |
-| Split | 1,200 train rows / 240 validation rows, in time order with no overlap |
-| Prediction | Output is never negative; missing model features raise an error; midday > midnight; validation R² > 0.95 |
-| Weather forecast | Columns match the model schema, only future hours are kept, gaps are interpolated, a fully missing field uses the training median, values are clipped |
-| API calls | Retry after a network error, wait on HTTP 429, give up after 3 attempts, fall back to the saved forecast |
-| REST API | `/health`, `/model`, `/forecast`, `/predict`; invalid input returns 422; no weather available returns 503 |
-
 ## Design decisions and assumptions
 
-1. **Dataset:** Uses the exact script from the assignment, so results are reproducible (`np.random.seed(42)`).
-2. **Chronological split:** Uses 50 days for training and 10 days for validation, matching the brief. Shuffling would leak future information into training.
-3. **No leakage in tuning:** `TimeSeriesSplit` is applied only inside the training days; validation data is used once, for the final scores.
-4. **Model choice:** Compares three tree-based models; selection uses cross-validation RMSE, not validation scores.
-5. **Missing data:** Uses interpolation for small gaps (weather changes smoothly hour to hour) and the training median if a whole API field is missing.
-6. **Timezone:** Treats dataset hours and API data as local time. The API is requested with `Asia/Kolkata`.
-7. **Forecast window:** The API returns 3 days starting at midnight; only hours from the current hour onwards are kept (48 hours).
-8. **No negative output:** Clips predictions with `np.clip(pred, 0, None)`.
-9. **Feature consistency:** Uses one shared feature function and a saved feature list to keep training and forecast columns identical in the notebook, app, and API.
-10. **Modular code:** Shared logic lives in `solar_core.py`; `train.py`, `api.py`, and `app.py` are thin entry points.
-11. **Chart:** The data is from Jan–Feb 2024, but the forecast is for the current day. To show them on one continuous line, the history's dates are shifted for display only. The data and model are unchanged, and the chart labels explain this.
+1. **Dataset:** generated once with the exact script from the brief (`np.random.seed(42)`), giving 1,440 hourly rows.
+2. **Cleaning:** timestamps are parsed and sorted, duplicate hours removed, a complete hourly timeline rebuilt, gaps filled by linear interpolation, and values clipped to valid ranges (e.g. humidity 0–100).
+3. **Features:** hour (0–23), `sin`/`cos` of hour (so 23:00 and 00:00 are neighbours), day of week and weekend flag. One shared function, `add_time_features()`, builds them for both historical and forecast data, so training and inference use identical columns.
+4. **Chronological split:** no shuffling, so the model is never trained on data from after the validation period.
+5. **Model choice:** Random Forest, XGBoost and LightGBM are compared; the final choice is made on cross-validation RMSE, not on the validation scores.
+6. **No negative output:** predictions are clipped with `np.clip(pred, 0, None)`.
+7. **Timezone:** dataset hours and API data are both treated as local time (`Asia/Kolkata`); only forecast hours from the current hour onward are used.
+8. **Chart:** the dataset covers Jan–Feb 2024 while the forecast is for the current date. To draw one continuous line, the history's dates are shifted for display only; data and model are unchanged.
+9. **Synthetic data:** scores show how well the model learns the generated data, not real solar-plant accuracy. In the brief's generator, night-time output is `max(0, noise)`, so night predictions are small positive values rather than exactly 0.
 
-## Limitations
+## Project structure
 
-- The dataset is synthetic (generated from a formula), so the scores show how well the model learned this data, not real solar-plant accuracy.
-- In the assignment's generator, night-time output is `max(0, random noise)`, so it is a small positive number about half the time. The model learns this, so night predictions can be small positive values rather than exactly 0.
-- Training temperature follows a simple sine curve, so real forecast temperatures (for example, a cool winter morning) can differ from what the model saw.
-- Panel orientation, shading, inverter losses, and plant-specific data are not modelled. A real deployment would need measured generation history and ongoing validation.
-- The tests use a fake weather response, so they do not check the live Open-Meteo service itself.
+```text
+Solar_Power_Prediction.ipynb   # step-by-step workflow: data, features, model, forecast, charts
+solar_core.py                  # shared code: data, features, weather API, prediction
+train.py                       # training script: split, tune, evaluate, save model
+app.py                         # Streamlit web app
+api.py                         # FastAPI REST API
+tests/                         # pytest unit tests
+requirements.txt
+models/solar_model.joblib      # saved model (created by train.py)
+outputs/                       # charts, prediction tables, metrics
+```
 
-## Bonus features included
+## Bonus features
 
-- Comparison of three models (Random Forest, XGBoost, LightGBM).
-- Interactive Plotly chart (notebook and app).
-- REST API with FastAPI (`/forecast`, `/predict`, `/model`, `/health`).
-- Cached and rate-limit-aware API calls: 10-minute cache, retries with back-off, HTTP 429 handling, and saved-forecast fallback.
-- Streamlit web app with CSV download.
-- Unit tests: 36 pytest tests for the core logic, the weather-API handling and the REST API.
-
-## Tech stack
-
-Python · pandas · NumPy · scikit-learn · XGBoost · LightGBM · Plotly · Matplotlib · Streamlit · FastAPI · Uvicorn · pytest · Open-Meteo API
+- Comparison of three models (Random Forest, XGBoost, LightGBM)
+- Interactive Plotly chart (notebook and web app)
+- Small REST API with FastAPI: `/health`, `/model`, `/forecast?hours=24`, `/predict`
+- Cached, rate-limit-aware API calls with retries and a saved-forecast fallback
+- 36 unit tests (pytest) covering feature engineering, the chronological split, cleaning, API handling and the REST endpoints; the weather API is mocked, so no internet is needed
