@@ -7,8 +7,9 @@ Docs:  http://127.0.0.1:8000/docs
 import json
 import time
 from contextlib import asynccontextmanager
-from typing import List, Optional
+from typing import List
 
+import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -139,7 +140,6 @@ def predict_custom(rows: List[WeatherInput]):
     bundle = require_model()
     if not rows:
         raise HTTPException(422, "Send at least one weather row.")
-    import pandas as pd
     weather = pd.DataFrame([r.model_dump() for r in rows])
     try:
         weather["timestamp"] = pd.to_datetime(weather["timestamp"])

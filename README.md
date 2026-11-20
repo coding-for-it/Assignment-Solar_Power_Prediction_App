@@ -49,6 +49,10 @@ solar-power-prediction/
 ├── train.py                       # Training script (tune, evaluate, save model)
 ├── api.py                         # FastAPI REST API
 ├── app.py                         # Streamlit web app
+├── tests/                         # Unit tests (pytest)
+│   ├── conftest.py
+│   ├── test_solar_core.py
+│   └── test_api.py
 ├── requirements.txt               # Python dependencies
 ├── .gitignore
 ├── README.md
@@ -361,6 +365,27 @@ curl -X POST "http://127.0.0.1:8000/predict" \
 
 Inputs are validated (for example, humidity 0–100 and hours 1–48). Invalid requests return HTTP 422. If the weather API is down, the endpoint falls back to the last saved forecast (`"source": "saved"`). If nothing is saved, it returns HTTP 503.
 
+## Running the tests
+
+The project has **36 automated tests** (pytest). They need no internet: the weather API is replaced by a fake response.
+
+```bash
+python -m pytest -v
+```
+
+Run `python train.py` once first. Tests that use the trained model are skipped automatically if `models/solar_model.joblib` is missing.
+
+| Area | What is checked |
+|---|---|
+| Dataset | Matches the assignment script (1,440 rows, correct dates, no negative output) and is reproducible |
+| Cleaning | Missing hours, missing values, duplicates and outliers are fixed |
+| Features | hour, sin/cos (including the 23:00 → 00:00 wrap-around), day of week, weekend flag |
+| Split | 1,200 train rows / 240 validation rows, in time order with no overlap |
+| Prediction | Output is never negative; missing model features raise an error; midday > midnight; validation R² > 0.95 |
+| Weather forecast | Columns match the model schema, only future hours are kept, gaps are interpolated, a fully missing field uses the training median, values are clipped |
+| API calls | Retry after a network error, wait on HTTP 429, give up after 3 attempts, fall back to the saved forecast |
+| REST API | `/health`, `/model`, `/forecast`, `/predict`; invalid input returns 422; no weather available returns 503 |
+
 ## Design decisions and assumptions
 
 1. **Dataset:** Uses the exact script from the assignment, so results are reproducible (`np.random.seed(42)`).
@@ -381,7 +406,7 @@ Inputs are validated (for example, humidity 0–100 and hours 1–48). Invalid r
 - In the assignment's generator, night-time output is `max(0, random noise)`, so it is a small positive number about half the time. The model learns this, so night predictions can be small positive values rather than exactly 0.
 - Training temperature follows a simple sine curve, so real forecast temperatures (for example, a cool winter morning) can differ from what the model saw.
 - Panel orientation, shading, inverter losses, and plant-specific data are not modelled. A real deployment would need measured generation history and ongoing validation.
-- There is no automated test suite yet.
+- The tests use a fake weather response, so they do not check the live Open-Meteo service itself.
 
 ## Bonus features included
 
@@ -390,7 +415,8 @@ Inputs are validated (for example, humidity 0–100 and hours 1–48). Invalid r
 - REST API with FastAPI (`/forecast`, `/predict`, `/model`, `/health`).
 - Cached and rate-limit-aware API calls: 10-minute cache, retries with back-off, HTTP 429 handling, and saved-forecast fallback.
 - Streamlit web app with CSV download.
+- Unit tests: 36 pytest tests for the core logic, the weather-API handling and the REST API.
 
 ## Tech stack
 
-Python · pandas · NumPy · scikit-learn · XGBoost · LightGBM · Plotly · Matplotlib · Streamlit · FastAPI · Uvicorn · Open-Meteo API
+Python · pandas · NumPy · scikit-learn · XGBoost · LightGBM · Plotly · Matplotlib · Streamlit · FastAPI · Uvicorn · pytest · Open-Meteo API
